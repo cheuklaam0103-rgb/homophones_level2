@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>趣味學語文：認識同音字</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap');
+        
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', '華康香港標準楷書', sans-serif;
+            background-color: #FFFDF0;
+            color: #2D3748;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .sen-title {
+            font-size: 1.875rem; /* 30px */
+            line-height: 2.25rem;
+        }
+
+        .sen-text {
+            font-size: 1.5rem; /* 24px */
+            line-height: 2.5rem; /* 加寬行距 */
+            letter-spacing: 0.05em;
+        }
+
+        .sen-btn {
+            min-height: 64px;
+            font-size: 1.5rem;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 6px 0 shadow-color;
+        }
+
+        .sen-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 shadow-color;
+        }
+
+        .btn-yellow {
+            background-color: #FFD166;
+            color: #543800;
+            border: 3px solid #F4A261;
+            box-shadow: 0 6px 0 #E76F51;
+        }
+
+        .btn-yellow:hover {
+            background-color: #FFE08A;
+        }
+
+        .btn-blue {
+            background-color: #4EA8DE;
+            color: #FFFFFF;
+            border: 3px solid #0077B6;
+            box-shadow: 0 6px 0 #023E8A;
+        }
+
+        .btn-blue:hover {
+            background-color: #5BC0BE;
+        }
+
+        .btn-green {
+            background-color: #06D6A0;
+            color: #004B36;
+            border: 3px solid #059669;
+            box-shadow: 0 6px 0 #047857;
+        }
+
+        .btn-green:hover {
+            background-color: #34D399;
+        }
+
+        /* Pulse Animation for Speech Button */
+        @keyframes pulse-light {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+        .pulse-audio {
+            animation: pulse-light 2s infinite;
+        }
+
+        /* Confetti Canvas fixed overlay */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .word-card {
+            border: 3px solid #CBD5E1;
+            background-color: #FFFFFF;
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .wrong-word-target {
+            background-color: #FEE2E2;
+            color: #DC2626;
+            border-bottom: 4px dashed #EF4444;
+            padding: 2px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .wrong-word-target.active {
+            animation: bounce 0.6s infinite alternate;
+            background-color: #FEF08A;
+            border-color: #EAB308;
+            color: #854D0E;
+        }
+
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-6px); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-2 md:p-6">
+    
+    <!-- Canvas Overlay for Confetti -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <header class="max-w-4xl w-full mx-auto bg-white rounded-3xl p-4 shadow-lg border-4 border-amber-200 mb-4">
+        <div class="flex flex-wrap justify-between items-center gap-2">
+            <!-- Title / Back Home -->
+            <button onclick="showPage('welcome')" class="flex items-center gap-2 text-2xl font-black text-amber-600 hover:text-amber-700 transition">
+                <span class="text-3xl">🌟</span>
+                <span>同音字大冒險</span>
+            </button>
+
+            <!-- TTS Voice Toggle Controls -->
+            <div class="flex items-center gap-2 bg-amber-50 p-2 rounded-2xl border border-amber-200">
+                <i class="fa-solid fa-volume-high text-amber-500 text-xl"></i>
+                <label class="text-base font-bold text-amber-900 cursor-pointer">語音輔助</label>
+                <select id="voice-lang" onchange="speakCurrentText()" class="bg-white border border-amber-300 rounded-lg px-2 py-1 text-base font-bold text-gray-700 focus:outline-none">
+                    <option value="zh-HK">廣東話</option>
+                    <option value="zh-TW">國語/普通話</option>
+                </select>
+            </div>
+
+            <!-- Score / Star Stats -->
+            <div class="flex items-center gap-4 bg-yellow-100 px-4 py-2 rounded-2xl border-2 border-yellow-300">
+                <div class="flex items-center gap-1">
+                    <span class="text-3xl">⭐</span>
+                    <span id="score-display" class="text-2xl font-black text-amber-800">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div id="progress-container" class="w-full bg-gray-200 h-6 rounded-full mt-3 overflow-hidden border-2 border-gray-300 hidden">
+            <div id="progress-bar" class="bg-gradient-to-r from-green-400 to-emerald-500 h-full w-0 transition-all duration-500"></div>
+        </div>
+    </header>
+
+    <!-- Main Content Area Container -->
+    <main class="max-w-4xl w-full mx-auto flex-grow flex flex-col justify-center">
+
+        <section id="page-welcome" class="bg-white rounded-3xl p-6 md:p-8 shadow-xl border-4 border-yellow-300 text-center space-y-6">
+            <div class="inline-block bg-yellow-100 p-4 rounded-full border-4 border-yellow-400 mb-2">
+                <span class="text-6xl md:text-7xl">✏️</span>
+            </div>
+            <h1 class="sen-title font-black text-amber-700">歡迎來到「認識同音字」學習樂園！</h1>
+            <p class="sen-text text-gray-600 font-bold max-w-xl mx-auto">
+                這裡有很多發音相同但意思不同的漢字。點擊按鈕，開始遊戲，一起收集星星吧！
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto pt-4">
+                <button onclick="startMode('part1')" class="sen-btn btn-yellow rounded-2xl p-4 flex flex-col items-center justify-center gap-2">
+                    <span class="text-3xl">🎯 第一部分</span>
+                    <span class="font-black">同音字二選一</span>
+                    <span class="text-sm font-normal opacity-90">（配有情境圖像提示）</span>
+                </button>
+
+                <button onclick="startMode('part2')" class="sen-btn btn-blue rounded-2xl p-4 flex flex-col items-center justify-center gap-2">
+                    <span class="text-3xl">🔍 第二部分</span>
+                    <span class="font-black">同音字找錯字</span>
+                    <span class="text-sm font-normal opacity-90">（替換正確漢字）</span>
+                </button>
+            </div>
+
+            <!-- Centered Grand Slam Challenge Button -->
+            <div class="pt-2 flex justify-center w-full">
+                <button onclick="startMode('all')" class="sen-btn btn-green w-full max-w-2xl rounded-2xl p-4 flex items-center justify-center gap-3">
+                    <span class="text-3xl">🚀</span>
+                    <span class="font-black">大滿貫挑戰（全套 12 題）</span>
+                </button>
+            </div>
+        </section>
+
+        <section id="page-part1" class="bg-white rounded-3xl p-6 md:p-8 shadow-xl border-4 border-amber-300 space-y-6 hidden">
+            <!-- Mode Banner -->
+            <div class="flex justify-between items-center border-b-2 border-dashed border-amber-200 pb-3">
+                <span class="text-xl font-bold bg-amber-100 text-amber-800 px-4 py-1 rounded-full">
+                    第一部分：同音字二選一 (<span id="p1-current-q">1</span>/6)
+                </span>
+                <button id="p1-audio-btn" onclick="speakText(currentP1Sentence)" class="pulse-audio bg-amber-400 hover:bg-amber-500 text-amber-950 font-black px-4 py-2 rounded-2xl flex items-center gap-2 shadow-md">
+                    <span class="text-2xl">🔊</span>
+                    <span>聽讀句子</span>
+                </button>
+            </div>
+
+            <!-- Visual Context Cue Emoji Display Area -->
+            <div id="p1-emoji-cue" class="text-center text-7xl md:text-8xl py-4 bg-sky-50 rounded-2xl border-2 border-sky-100 shadow-inner">
+                🍲
+            </div>
+
+            <!-- Sentence Context with Blank -->
+            <div id="p1-sentence-box" class="sen-text font-black text-center text-gray-800 bg-amber-50 p-6 rounded-2xl border-2 border-amber-200 shadow-sm">
+                <!-- Dynamic text populated by JS -->
+            </div>
+
+            <!-- Large Choice Buttons (2 Options) -->
+            <div class="grid grid-cols-2 gap-4 max-w-xl mx-auto pt-2">
+                <button id="p1-opt-0" onclick="checkP1Answer(0)" class="sen-btn btn-yellow rounded-2xl text-4xl font-black py-6">
+                    窩
+                </button>
+                <button id="p1-opt-1" onclick="checkP1Answer(1)" class="sen-btn btn-blue rounded-2xl text-4xl font-black py-6">
+                    鍋
+                </button>
+            </div>
+
+            <!-- Feedback Message Banner -->
+            <div id="p1-feedback" class="sen-text font-black text-center min-h-[50px] flex items-center justify-center rounded-2xl transition-all">
+                <!-- Instant feedback inserted here -->
+            </div>
+        </section>
+
+        <section id="page-part2" class="bg-white rounded-3xl p-6 md:p-8 shadow-xl border-4 border-blue-300 space-y-6 hidden">
+            <!-- Mode Banner -->
+            <div class="flex justify-between items-center border-b-2 border-dashed border-blue-200 pb-3">
+                <span class="text-xl font-bold bg-blue-100 text-blue-800 px-4 py-1 rounded-full">
+                    第二部分：同音字找錯字 (<span id="p2-current-q">1</span>/6)
+                </span>
+                <button id="p2-audio-btn" onclick="speakText(currentP2Sentence)" class="pulse-audio bg-blue-400 hover:bg-blue-500 text-white font-black px-4 py-2 rounded-2xl flex items-center gap-2 shadow-md">
+                    <span class="text-2xl">🔊</span>
+                    <span>聽讀句子</span>
+                </button>
+            </div>
+
+            <!-- Instruction Box -->
+            <div class="bg-blue-50 p-3 rounded-xl border border-blue-200 text-blue-900 font-bold text-center text-lg">
+                💡 提示：點擊句子中的<span class="text-red-500 font-black">「紅框錯字」</span>，然後選擇下方字庫卡片中正確的字！
+            </div>
+
+            <!-- Sentence Context with Target Wrong Word -->
+            <div id="p2-sentence-box" class="sen-text font-black text-center text-gray-800 bg-gray-50 p-6 rounded-2xl border-2 border-gray-200 shadow-sm">
+                <!-- Dynamic Sentence populated by JS -->
+            </div>
+
+            <!-- Homophone Word Bank Cards Container -->
+            <div class="space-y-2">
+                <div class="text-center font-bold text-gray-600 text-lg">【 正確字選擇庫 】</div>
+                <div id="p2-word-bank" class="flex flex-wrap justify-center gap-3 md:gap-4 p-4 bg-amber-50 rounded-2xl border-2 border-amber-200">
+                    <!-- Word bank buttons will be generated dynamically -->
+                </div>
+            </div>
+
+            <!-- Feedback Message Banner -->
+            <div id="p2-feedback" class="sen-text font-black text-center min-h-[50px] flex items-center justify-center rounded-2xl transition-all">
+                <!-- Instant feedback inserted here -->
+            </div>
+        </section>
+
+        <section id="page-result" class="bg-white rounded-3xl p-6 md:p-8 shadow-2xl border-4 border-yellow-400 text-center space-y-6 hidden">
+            <div class="text-7xl animate-bounce">🏆</div>
+            <h1 class="sen-title font-black text-amber-600">太棒了！你完成了學習挑戰！</h1>
+
+            <!-- Stars Rating Display -->
+            <div id="result-stars" class="text-5xl md:text-6xl space-x-2">
+                ⭐ ⭐ ⭐
+            </div>
+
+            <!-- Final Score Summary -->
+            <div class="bg-yellow-50 p-6 rounded-2xl border-2 border-yellow-200 max-w-md mx-auto space-y-2">
+                <div class="sen-text font-black text-amber-900">
+                    總得分：<span id="final-score" class="text-4xl text-amber-600">100</span> 分
+                </div>
+                <p id="result-eval-text" class="font-bold text-gray-700 text-xl">
+                    你對同音字有著極佳的辨析能力，繼續保持！
+                </p>
+            </div>
+
+            <!-- Badges Unlocked -->
+            <div class="flex justify-center gap-4 py-2">
+                <div class="bg-emerald-100 border-2 border-emerald-300 p-3 rounded-2xl flex items-center gap-2 text-emerald-800 font-black">
+                    <span class="text-3xl">🏅</span> 同音字小達人
+                </div>
+                <div class="bg-purple-100 border-2 border-purple-300 p-3 rounded-2xl flex items-center gap-2 text-purple-800 font-black">
+                    <span class="text-3xl">🧠</span> 超強專注力
+                </div>
+            </div>
+
+            <!-- Centered Action Buttons in Result Page -->
+            <div class="flex flex-wrap justify-center items-center gap-4 pt-4 w-full mx-auto">
+                <button onclick="showPage('welcome')" class="sen-btn btn-yellow rounded-2xl px-8 py-3 font-black flex items-center justify-center gap-2">
+                    <span class="text-2xl">🏠</span> 再玩一次
+                </button>
+                <button onclick="window.print()" class="sen-btn btn-green rounded-2xl px-8 py-3 font-black flex items-center justify-center gap-2">
+                    <span class="text-2xl">🖨️</span> 列印成績
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-4xl w-full mx-auto text-center text-gray-500 font-bold py-4 text-base">
+        適合基順學生之「同音字」互動輔助教學網頁
+    </footer>
+
+    <script>
+        const part1Questions = [
+            {
+                id: 1,
+                prefix: "爸爸生日，媽媽建議到火 ( ",
+                suffix: " ) 店吃晚飯。",
+                options: ["窩", "鍋"],
+                answer: 1,
+                emoji: "🍲 🍲",
+                ttsText: "爸爸生日，媽媽建議到火鍋店吃晚飯。"
+            },
+            {
+                id: 2,
+                prefix: "這個游泳池的水 ( ",
+                suffix: " ) 達到兩米。",
+                options: ["深", "心"],
+                answer: 0,
+                emoji: "🏊‍♂️ 🏊‍♀️",
+                ttsText: "這個游泳池的水深達到兩米。"
+            },
+            {
+                id: 3,
+                prefix: "近形字很易寫錯，同學一定要小心分 ( ",
+                suffix: " ) 啊！",
+                options: ["便", "辨"],
+                answer: 1,
+                emoji: "🔍 🔍",
+                ttsText: "近形字很易寫錯，同學一定要小心分辨啊！"
+            },
+            {
+                id: 4,
+                prefix: "經過一個多小時的車 ( ",
+                suffix: " )，我們終於到達了目的地。",
+                options: ["程", "情"],
+                answer: 0,
+                emoji: "🚗 🚌",
+                ttsText: "經過一個多小時的車程，我們終於到達了目的地。"
+            },
+            {
+                id: 5,
+                prefix: "我們要小心橫過 ( ",
+                suffix: " ) 路。",
+                options: ["馬", "碼"],
+                answer: 0,
+                emoji: "🚥 🚶‍♂️",
+                ttsText: "我們要小心橫過馬路。"
+            },
+            {
+                id: 6,
+                prefix: "疫情期間，外出時緊記要配 ( ",
+                suffix: " ) 口罩。",
+                options: ["帶", "戴"],
+                answer: 1,
+                emoji: "😷 😷",
+                ttsText: "疫情期間，外出時緊記要配戴口罩。"
+            }
+        ];
+
+        const part2Questions = [
+            {
+                id: 1,
+                prefix: "大家休「",
+                wrongWord: "色",
+                suffix: "」一會兒吧！",
+                correctWord: "息",
+                ttsText: "大家休息一會兒吧！"
+            },
+            {
+                id: 2,
+                prefix: "這盒顏「",
+                wrongWord: "息",
+                suffix: "」筆真是漂亮啊！",
+                correctWord: "色",
+                ttsText: "這盒顏色筆真是漂亮啊！"
+            },
+            {
+                id: 3,
+                prefix: "你知道明天不用上學的「",
+                wrongWord: "完",
+                suffix: "」因嗎？",
+                correctWord: "原",
+                ttsText: "你知道明天不用上學的原因嗎？"
+            },
+            {
+                id: 4,
+                prefix: "同學「",
+                wrongWord: "原",
+                suffix: "」成堂課了嗎？",
+                correctWord: "完",
+                ttsText: "同學完成堂課了嗎？"
+            },
+            {
+                id: 5,
+                prefix: "小明最喜歡的飲品是「",
+                wrongWord: "氣",
+                suffix: "」水。",
+                correctWord: "汽",
+                ttsText: "小明最喜歡的飲品是汽水。"
+            },
+            {
+                id: 6,
+                prefix: "香港的空「",
+                wrongWord: "汽",
+                suffix: "」質素十分差。",
+                correctWord: "氣",
+                ttsText: "香港的空氣質素十分差。"
+            }
+        ];
+
+        const p2WordBankList = ["息", "色", "氣", "汽", "完", "原"];
+
+        /* State Variables */
+        let currentMode = 'part1'; // 'part1', 'part2', or 'all'
+        let currentP1Index = 0;
+        let currentP2Index = 0;
+        let score = 0;
+        let totalQuestionsAttempted = 0;
+        let totalQuestionsCount = 6;
+        let p2SelectedTarget = false;
+
+        let currentP1Sentence = "";
+        let currentP2Sentence = "";
+
+        /* Audio Synthesis Engine (Web Audio API) */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.3); // A5
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, audioCtx.currentTime); // A3
+                osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+            } else if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.08);
+            }
+        }
+
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Stop any ongoing speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                const langSelect = document.getElementById('voice-lang').value;
+                utterance.lang = langSelect;
+                utterance.rate = 0.85; // Slightly slower for SEN comprehension
+                utterance.pitch = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function speakCurrentText() {
+            const activePage = getActivePage();
+            if (activePage === 'part1' && currentP1Sentence) {
+                speakText(currentP1Sentence);
+            } else if (activePage === 'part2' && currentP2Sentence) {
+                speakText(currentP2Sentence);
+            }
+        }
+
+        function getActivePage() {
+            if (!document.getElementById('page-part1').classList.contains('hidden')) return 'part1';
+            if (!document.getElementById('page-part2').classList.contains('hidden')) return 'part2';
+            return 'welcome';
+        }
+
+        /* Navigation Management */
+        function showPage(pageId) {
+            ['welcome', 'part1', 'part2', 'result'].forEach(id => {
+                document.getElementById(`page-${id}`).classList.add('hidden');
+            });
+            document.getElementById(`page-${pageId}`).classList.remove('hidden');
+
+            const progressContainer = document.getElementById('progress-container');
+            if (pageId === 'part1' || pageId === 'part2') {
+                progressContainer.classList.remove('hidden');
+            } else {
+                progressContainer.classList.add('hidden');
+            }
+        }
+
+        function updateScore(points) {
+            score += points;
+            document.getElementById('score-display').innerText = score;
+        }
+
+        function updateProgressBar() {
+            const percent = Math.min(100, Math.round((totalQuestionsAttempted / totalQuestionsCount) * 100));
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+        }
+
+        /* Mode Start Initializer */
+        function startMode(mode) {
+            playSound('click');
+            currentMode = mode;
+            score = 0;
+            totalQuestionsAttempted = 0;
+            document.getElementById('score-display').innerText = '0';
+
+            if (mode === 'part1') {
+                totalQuestionsCount = part1Questions.length;
+                currentP1Index = 0;
+                loadP1Question();
+                showPage('part1');
+            } else if (mode === 'part2') {
+                totalQuestionsCount = part2Questions.length;
+                currentP2Index = 0;
+                loadP2Question();
+                showPage('part2');
+            } else if (mode === 'all') {
+                totalQuestionsCount = part1Questions.length + part2Questions.length;
+                currentP1Index = 0;
+                currentP2Index = 0;
+                loadP1Question();
+                showPage('part1');
+            }
+            updateProgressBar();
+        }
+
+        function loadP1Question() {
+            const q = part1Questions[currentP1Index];
+            document.getElementById('p1-current-q').innerText = `${currentP1Index + 1}`;
+            document.getElementById('p1-emoji-cue').innerText = q.emoji;
+            document.getElementById('p1-sentence-box').innerHTML = `${q.prefix}<span class="text-amber-600 underline px-2">？</span>${q.suffix}`;
+            document.getElementById('p1-opt-0').innerText = q.options[0];
+            document.getElementById('p1-opt-1').innerText = q.options[1];
+
+            // Reset Feedback Box
+            const fb = document.getElementById('p1-feedback');
+            fb.className = "sen-text font-black text-center min-h-[50px] flex items-center justify-center rounded-2xl transition-all";
+            fb.innerText = "";
+
+            currentP1Sentence = q.ttsText;
+            speakText(q.ttsText);
+        }
+
+        function checkP1Answer(selectedOptionIndex) {
+            playSound('click');
+            const q = part1Questions[currentP1Index];
+            const fb = document.getElementById('p1-feedback');
+
+            if (selectedOptionIndex === q.answer) {
+                playSound('correct');
+                triggerConfetti();
+                updateScore(10);
+                fb.className = "sen-text font-black text-center min-h-[50px] flex items-center justify-center rounded-2xl bg-emerald-100 text-emerald-800 border-2 border-emerald-300 p-2 animate-bounce";
+                fb.innerText = "🎉 答對了！你太厲害了！";
+
+                document.getElementById('p1-sentence-box').innerHTML = `${q.prefix}<span class="text-emerald-600 font-bold text-3xl underline px-2">${q.options[q.answer]}</span>${q.suffix}`;
+
+                setTimeout(() => {
+                    totalQuestionsAttempted++;
+                    updateProgressBar();
+                    currentP1Index++;
+
+                    if (currentP1Index < part1Questions.length) {
+                        loadP1Question();
+                    } else {
+                        if (currentMode === 'all') {
+                            currentP2Index = 0;
+                            loadP2Question();
+                            showPage('part2');
+                        } else {
+                            finishQuiz();
+                        }
+                    }
+                }, 1800);
+
+            } else {
+                playSound('wrong');
+                fb.className = "sen-text font-black text-center min-h-[50px] flex items-center justify-center rounded-2xl bg-amber-100 text-amber-800 border-2 border-amber-300 p-2";
+                fb.innerText = "💪 沒關係，再試一次看看喔！";
+            }
+        }
+
+        function loadP2Question() {
+            const q = part2Questions[currentP2Index];
+            document.getElementById('p2-current-q').innerText = `${currentP2Index + 1}`;
+
+            p2SelectedTarget = true;
+
+            document.getElementById('p2-sentence-box').innerHTML = 
+                `${q.prefix}<span id="wrong-word-btn" class="wrong-word-target active" onclick="toggleWrongTarget()">${q.wrongWord}</span>${q.suffix}`;
+
+            const bankContainer = document.getElementById('p2-word-bank');
+            bankContainer.innerHTML = '';
+            p2WordBankList.forEach(word => {
+                const btn = document.createElement('button');
+                btn.className = "word-card sen-btn px-6 py-3 font-black text-3xl shadow-sm text-gray-800 hover:bg-amber-100";
+                btn.innerText = word;
+                btn.onclick = () => checkP2Answer(word);
+                bankContainer.appendChild(btn);
+            });
+
+            const fb = document.getElementById('p2-feedback');
+            fb.className = "sen-text font-black text-center min-h-[50px] flex items-center justify-center rounded-2xl transition-all";
+            fb.innerText = "👇 請點擊下方正確的字來替換紅色錯字：";
+
+            currentP2Sentence = q.ttsText;
+            speakText(q.ttsText);
+        }
+
+        function toggleWrongTarget() {
+            playSound('click');
+            const target = document.getElementById('wrong-word-btn');
+            p2SelectedTarget = true;
+            target.classList.add('active');
+        }
+
+        function checkP2Answer(selectedWord) {
+            playSound('click');
+            const q = part2Questions[currentP2Index];
+            const fb = document.getElementById('p2-feedback');
+
+            if (selectedWord === q.correctWord) {
+                playSound('correct');
+                triggerConfetti();
+                updateScore(10);
+
+                fb.className = "sen-text font-black text-center min-h-[50px] flex items-center justify-center rounded-2xl bg-emerald-100 text-emerald-800 border-2 border-emerald-300 p-2 animate-bounce";
+                fb.innerText = `🎉 答對了！「${q.wrongWord}」更正為「${q.correctWord}」！`;
+
+                document.getElementById('p2-sentence-box').innerHTML = 
+                    `${q.prefix}<span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg border-2 border-emerald-400 font-bold">${q.correctWord}</span>${q.suffix}`;
+
+                setTimeout(() => {
+                    totalQuestionsAttempted++;
+                    updateProgressBar();
+                    currentP2Index++;
+
+                    if (currentP2Index < part2Questions.length) {
+                        loadP2Question();
+                    } else {
+                        finishQuiz();
+                    }
+                }, 2000);
+
+            } else {
+                playSound('wrong');
+                fb.className = "sen-text font-black text-center min-h-[50px] flex items-center justify-center rounded-2xl bg-amber-100 text-amber-800 border-2 border-amber-300 p-2";
+                fb.innerText = "🌟 再想一想，選另一個字試試看！";
+            }
+        }
+
+        function finishQuiz() {
+            showPage('result');
+            playSound('correct');
+            triggerConfetti();
+
+            const finalScoreElem = document.getElementById('final-score');
+            finalScoreElem.innerText = score;
+
+            const starsElem = document.getElementById('result-stars');
+            const evalText = document.getElementById('result-eval-text');
+
+            if (score >= 60) {
+                starsElem.innerHTML = "⭐ ⭐ ⭐";
+                evalText.innerText = "太優秀了！你已經完全掌握了這些同音字！";
+            } else if (score >= 30) {
+                starsElem.innerHTML = "⭐ ⭐ ⚪";
+                evalText.innerText = "做得好！再練習一下會更完美喔！";
+            } else {
+                starsElem.innerHTML = "⭐ ⚪ ⚪";
+                evalText.innerText = "繼續加油！多聽多讀，一定會越來越進步！";
+            }
+
+            speakText("恭喜你完成挑戰！獲得三顆星殊榮！");
+        }
+
+        /* Confetti Animation System */
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function triggerConfetti() {
+            particles = [];
+            const colors = ['#FFD166', '#06D6A0', '#118AB2', '#EF476F', '#A855F7'];
+            for (let i = 0; i < 80; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 0.8) * 12,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 10 + 6,
+                    rotation: Math.random() * 360,
+                    rotationSpeed: (Math.random() - 0.5) * 10
+                });
+            }
+            animateConfetti();
+        }
+
+        function animateConfetti() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let alive = false;
+
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.25; // Gravity
+                p.rotation += p.rotationSpeed;
+
+                if (p.y < canvas.height) {
+                    alive = true;
+                }
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.rotation * Math.PI) / 180);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                ctx.restore();
+            });
+
+            if (alive) {
+                requestAnimationFrame(animateConfetti);
+            }
+        }
+
+        // Initialize On Load
+        window.onload = function() {
+            showPage('welcome');
+        };
+    </script>
+</body>
+</html>
